@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: chatwoot-rails
+    env: docker
+    repo: https://github.com/sbmsr/chatwoot.git
+    dockerfilePath: ./docker/Dockerfile-Web
+    plan: standard
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: chatwoot-redis
+          property: connectionString # available properties are listed below
+      - key: POSTGRES_HOST
+        fromDatabase: 
+          name: postgres
+          property: host # available properties are listed below
+      - key: POSTGRES_PASSWORD
+        value: postgres
+  # A Redis instance
+  - type: redis
+    name: chatwoot-redis
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+
+  # Let's create our background worker
+  - type: worker
+    name: chatwoot-sidekiq
+    env: ruby
+    repo: https://github.com/chatwoot/chatwoot.git
+    buildCommand: bundle install
+    startCommand: bundle exec sidekiq -C config/sidekiq.yml
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: chatwoot-redis
+          property: connectionString
+
+databases:
+  - name: postgres
+    ipAllowList: []
